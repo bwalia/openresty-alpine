@@ -22,7 +22,8 @@ jobs:
       run: |
         docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
     - name: Build Openresty Alpine Public Docker Image
-      run: docker build . --file Dockerfile --tag ${{ secrets.DOCKER_USER }}/openresty-alpine:$(date +%m-%d+%m-% +%m-%d-%Y)
+      run: docker build . --file Dockerfile --tag ${{ secrets.DOCKER_USER }}/openresty-alpine:$(date +%m-%d-%Y)
 
     - name: Docker Push
       run: docker push ${{ secrets.DOCKER_USER }}/openresty-alpine:$(date +%m-%d-%Y)
+-
