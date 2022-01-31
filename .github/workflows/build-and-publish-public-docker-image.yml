@@ -25,4 +25,4 @@ jobs:
      run: docker build . --file Dockerfile --tag ${{ secrets.DOCKER_USER }}/openresty-alpine:$(date +%s)
 
    - name: Docker Push
-     run: docker push ${{ secrets.DOCKER_USER }}/openresty ${{ secrets.DOCKER_USER }}
+     run: docker push ${{ secrets.DOCKER_USER }}/openresty-alpine:$(date +%s)
