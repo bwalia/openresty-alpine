@@ -1,5 +1,3 @@
-# Compile Openresty from source
-
 # Dockerfile - alpine
 # https://github.com/openresty/docker-openresty
 
@@ -8,19 +6,15 @@ ARG RESTY_IMAGE_TAG="3.15"
 
 FROM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG}
 
-LABEL maintainer="Balinder Walia <bwalia@tenthmatrix.co.uk>"
-
-# ensure www-data user exists
-#RUN set -x ; \
-  #addgroup -g 82 -S www-data ; \
-  #adduser -u 82 -D -S -G www-data www-data && exit 0 ; exit 1
+LABEL maintainer="Evan Wies <evan@neomantra.net>"
 
 # Docker Build Arguments
 ARG RESTY_VERSION="1.19.9.1"
-ARG RESTY_OPENSSL_VERSION="1.1.1i"
+ARG RESTY_OPENSSL_VERSION="1.1.1l"
 ARG RESTY_OPENSSL_PATCH_VERSION="1.1.1f"
 ARG RESTY_OPENSSL_URL_BASE="https://www.openssl.org/source"
-ARG RESTY_PCRE_VERSION="8.45"
+ARG RESTY_PCRE_VERSION="8.44"
+ARG RESTY_PCRE_SHA256="aecafd4af3bd0f3935721af77b889d9024b2e01d96b58471bd91a3063fb47728"
 ARG RESTY_J="1"
 ARG RESTY_CONFIG_OPTIONS="\
     --with-compat \
@@ -74,6 +68,7 @@ LABEL resty_openssl_version="${RESTY_OPENSSL_VERSION}"
 LABEL resty_openssl_patch_version="${RESTY_OPENSSL_PATCH_VERSION}"
 LABEL resty_openssl_url_base="${RESTY_OPENSSL_URL_BASE}"
 LABEL resty_pcre_version="${RESTY_PCRE_VERSION}"
+LABEL resty_pcre_sha256="${RESTY_PCRE_SHA256}"
 LABEL resty_config_options="${RESTY_CONFIG_OPTIONS}"
 LABEL resty_config_options_more="${RESTY_CONFIG_OPTIONS_MORE}"
 LABEL resty_config_deps="${_RESTY_CONFIG_DEPS}"
@@ -82,17 +77,6 @@ LABEL resty_add_package_rundeps="${RESTY_ADD_PACKAGE_RUNDEPS}"
 LABEL resty_eval_pre_configure="${RESTY_EVAL_PRE_CONFIGURE}"
 LABEL resty_eval_post_make="${RESTY_EVAL_POST_MAKE}"
 
-#install aws cli so we can interact with s3
-RUN apk add --no-cache \
-        python3 \
-        py3-pip \
-    && pip3 install --upgrade pip \
-    && pip3 install \
-        awscli \
-    && rm -rf /var/cache/apk/*
-
-RUN aws --version   # Just to make sure its installed alright
-RUN mkdir -p /var/log/nginx && touch /var/log/nginx/error.log && touch /var/log/nginx/access.log
 
 RUN apk add --no-cache --virtual .build-deps \
         build-base \
@@ -138,7 +122,8 @@ RUN apk add --no-cache --virtual .build-deps \
     && make -j${RESTY_J} \
     && make -j${RESTY_J} install_sw \
     && cd /tmp \
-    && curl -fSL https://edgeone-public.s3.eu-west-2.amazonaws.com/src/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
+    && curl -fSL https://downloads.sourceforge.net/project/pcre/pcre/${RESTY_PCRE_VERSION}/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
+    && echo "${RESTY_PCRE_SHA256}  pcre-${RESTY_PCRE_VERSION}.tar.gz" | shasum -a 256 --check \
     && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz \
     && cd /tmp/pcre-${RESTY_PCRE_VERSION} \
     && ./configure \
@@ -159,16 +144,32 @@ RUN apk add --no-cache --virtual .build-deps \
     && cd /tmp \
     && if [ -n "${RESTY_EVAL_POST_MAKE}" ]; then eval $(echo ${RESTY_EVAL_POST_MAKE}); fi \
     && rm -rf \
-        openssl-${RESTY_OPENSSL_VERSION}.tar.gz openssl-${RESTY_OPENSSL_VERSION} \
+        #openssl-${RESTY_OPENSSL_VERSION}.tar.gz openssl-${RESTY_OPENSSL_VERSION} \
         pcre-${RESTY_PCRE_VERSION}.tar.gz pcre-${RESTY_PCRE_VERSION} \
         openresty-${RESTY_VERSION}.tar.gz openresty-${RESTY_VERSION} \
     && apk del .build-deps \
     && mkdir -p /var/run/openresty \
-    && ln -sf /dev/stdout /var/log/nginx/access.log \
-    && ln -sf /dev/stderr /var/log/nginx/error.log
-
+    && ln -sf /dev/stdout /usr/local/openresty/nginx/logs/access.log \
+    && ln -sf /dev/stderr /usr/local/openresty/nginx/logs/error.log
 
 # Add additional binaries into PATH for convenience
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
+#CMD ["/usr/local/openresty/bin/openresty", "-g", "daemon off;"]
+
+# Use SIGQUIT instead of default SIGTERM to cleanly drain requests
+# See https://github.com/openresty/docker-openresty/blob/master/README.md#tips--pitfalls
+# Copy nginx configuration files
+COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
+COPY nginx.vh.default.conf /etc/nginx/conf.d/default.conf
+COPY api.lua /usr/local/openresty/nginx/lua/api.lua
+COPY exec.lua /usr/local/openresty/nginx/lua/exec.lua
+
 CMD ["/usr/local/openresty/bin/openresty", "-g", "daemon off;"]
+
+EXPOSE 80
+
+# Use SIGQUIT instead of default SIGTERM to cleanly drain requests
+# See https://github.com/openresty/docker-openresty/blob/master/README.md#tips--pitfalls
+STOPSIGNAL SIGQUIT
+
