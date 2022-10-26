@@ -8,6 +8,10 @@ on:
 
   # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 
+env:
+  #image_tag: $(date +%m-%d-%Y)
+  image_tag: latest
+
 jobs:
   # This workflow contains a single job called build
   build:
@@ -27,12 +31,12 @@ jobs:
       env:
         DOCKER_USER: ${{ secrets.DOCKER_LOGIN}}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD}}
-      run: docker build . --file Dockerfile --tag $DOCKER_USER/openresty-alpine:$(date +%m-%d-%Y)
+      run: docker build . --file Dockerfile --tag $DOCKER_USER/openresty-alpine:${{ env.image_tag }}
 
     - name: Docker Push
       env:
         DOCKER_USER: ${{ secrets.DOCKER_USER}}
-      run: docker push $DOCKER_USER/openresty-alpine:$(date +%m-%d-%Y)
+      run: docker push $DOCKER_USER/openresty-alpine:${{ env.image_tag }}
 
     - name: Slack Notification for Workstation CRM release 
       uses: rtCamp/action-slack-notify@v2
