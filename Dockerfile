@@ -173,7 +173,7 @@ RUN cd ${SOURCES_DIR} \
     && ln -sf /dev/stdout ${LOGS_DIR}/access.log \
     && ln -sf /dev/stderr ${LOGS_DIR}/error.log
 # Reset permissions for php unix sockets.
-RUN chown www-data:root ${OPENRESTY_SOCKET_DIR}
+#   RUN chown www-data:root ${OPENRESTY_SOCKET_DIR}
 RUN chmod +x ${OPENRESTY_SOCKET_DIR}
 RUN chmod 777 -R ${OPENRESTY_SOCKET_DIR}
 RUN rm -rf ${SOURCES_DIR}
