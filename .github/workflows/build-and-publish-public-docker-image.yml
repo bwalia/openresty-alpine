@@ -31,7 +31,7 @@ jobs:
       env:
         DOCKER_USER: ${{ secrets.DOCKER_LOGIN}}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD}}
-      run: docker build . --file Dockerfile --tag $DOCKER_USER/openresty-alpine:${{ env.image_tag }}
+      run: docker build -t $DOCKER_USER/openresty-alpine:${{ env.image_tag }}
 
     - name: Docker Push
       env:
