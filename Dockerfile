@@ -2,19 +2,36 @@
 # https://github.com/openresty/docker-openresty
 
 ARG RESTY_IMAGE_BASE="alpine"
-ARG RESTY_IMAGE_TAG="3.15"
+ARG RESTY_IMAGE_TAG="3.16.2"
 
 FROM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG}
 
-LABEL maintainer="Evan Wies <evan@neomantra.net>"
+LABEL maintainer="Balinder Walia <bwalia@workstation.co.uk>"
 
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
+RUN chmod +x /usr/local/bin/install-php-extensions && sync && install-php-extensions \
+    gd \
+    xdebug \
+    @composer \
+    intl \
+    mcrypt \
+    memcache \
+    mysqli \
+    xlswriter \
+    uuid \
+    zip \
+    yaml \
+    mailparse
+
+ARG RESTY_IMAGE_BASE="alpine"
+ARG RESTY_IMAGE_TAG="3.16"
 # Docker Build Arguments
-ARG RESTY_VERSION="1.19.9.1"
-ARG RESTY_OPENSSL_VERSION="1.1.1l"
+ARG RESTY_VERSION="1.21.4.1"
+ARG RESTY_OPENSSL_VERSION="1.1.1i"
 ARG RESTY_OPENSSL_PATCH_VERSION="1.1.1f"
 ARG RESTY_OPENSSL_URL_BASE="https://www.openssl.org/source"
-ARG RESTY_PCRE_VERSION="8.44"
-ARG RESTY_PCRE_SHA256="aecafd4af3bd0f3935721af77b889d9024b2e01d96b58471bd91a3063fb47728"
+ARG RESTY_PCRE_VERSION="8.45"
 ARG RESTY_J="1"
 ARG RESTY_CONFIG_OPTIONS="\
     --with-compat \
@@ -55,6 +72,54 @@ ARG RESTY_ADD_PACKAGE_RUNDEPS=""
 ARG RESTY_EVAL_PRE_CONFIGURE=""
 ARG RESTY_EVAL_POST_MAKE=""
 
+RUN apk update && \
+    apk add --no-cache --virtual \
+    build-base \
+    coreutils \
+    curl \
+    bash \
+    gd-dev \
+    geoip-dev \
+    libxslt-dev \
+    linux-headers \
+    make \
+    perl-dev \
+    readline-dev \
+    zlib-dev \
+    gd \
+    geoip \
+    libgcc \
+    libxslt \
+    patch \
+    zlib \
+    vim \
+    git \
+    g++ 
+    
+
+RUN php -v
+
+ARG SOURCES_DIR="/src"
+
+RUN mkdir -p ${SOURCES_DIR} && cd ${SOURCES_DIR}
+
+ARG OPENRESTY_SOCKET_DIR="/var/run/openresty"
+ARG LOGS_DIR="/var/log/nginx"
+RUN mkdir -p ${LOGS_DIR}
+
+WORKDIR ${SOURCES_DIR}
+
+RUN cd ${SOURCES_DIR} && wget https://openresty.org/download/openresty-1.11.2.5.tar.gz -O ${SOURCES_DIR}/openresty-1.11.2.5.tar.gz \
+    && tar -zxvf ${SOURCES_DIR}/openresty-1.11.2.5.tar.gz
+# \
+#&& ls -la ${SOURCES_DIR}/openresty-1.11.2.5/patches/openssl-1.0.2h-sess_set_get_cb_yield.patch    
+
+RUN cd ${SOURCES_DIR} && wget https://www.openssl.org/source/openssl-1.0.2k.tar.gz -O ${SOURCES_DIR}/openssl-1.0.2k.tar.gz \
+    && tar -zvxf ${SOURCES_DIR}/openssl-1.0.2k.tar.gz \
+    && cd ${SOURCES_DIR}/openssl-1.0.2k \
+    && patch -p1 < ${SOURCES_DIR}/openresty-1.11.2.5/patches/openssl-1.0.2h-sess_set_get_cb_yield.patch
+#     && ls -la ${SOURCES_DIR}/openresty-1.11.2.5/patches/openssl-1.0.2h-sess_set_get_cb_yield.patch
+
 # These are not intended to be user-specified
 ARG _RESTY_CONFIG_DEPS="--with-pcre \
     --with-cc-opt='-DNGX_LUA_ABORT_AT_PANIC -I/usr/local/openresty/pcre/include -I/usr/local/openresty/openssl/include' \
@@ -68,7 +133,6 @@ LABEL resty_openssl_version="${RESTY_OPENSSL_VERSION}"
 LABEL resty_openssl_patch_version="${RESTY_OPENSSL_PATCH_VERSION}"
 LABEL resty_openssl_url_base="${RESTY_OPENSSL_URL_BASE}"
 LABEL resty_pcre_version="${RESTY_PCRE_VERSION}"
-LABEL resty_pcre_sha256="${RESTY_PCRE_SHA256}"
 LABEL resty_config_options="${RESTY_CONFIG_OPTIONS}"
 LABEL resty_config_options_more="${RESTY_CONFIG_OPTIONS_MORE}"
 LABEL resty_config_deps="${_RESTY_CONFIG_DEPS}"
@@ -77,99 +141,72 @@ LABEL resty_add_package_rundeps="${RESTY_ADD_PACKAGE_RUNDEPS}"
 LABEL resty_eval_pre_configure="${RESTY_EVAL_PRE_CONFIGURE}"
 LABEL resty_eval_post_make="${RESTY_EVAL_POST_MAKE}"
 
+RUN cd ${SOURCES_DIR} \
+    && curl -fSL https://edgeone-public.s3.eu-west-2.amazonaws.com${SOURCES_DIR}/pcre/pcre-${RESTY_PCRE_VERSION}.tar.gz -o ${SOURCES_DIR}/pcre-${RESTY_PCRE_VERSION}.tar.gz \
+    && tar xzf ${SOURCES_DIR}/pcre-${RESTY_PCRE_VERSION}.tar.gz \
+    && cd ${SOURCES_DIR}/pcre-${RESTY_PCRE_VERSION} \
+    && ./configure \
+    --prefix=/usr/local/openresty/pcre \
+    --disable-cpp \
+    --enable-jit \
+    --enable-utf \
+    --enable-unicode-properties \
+    && make -j${RESTY_J} \
+    && make -j${RESTY_J} install
 
-RUN apk add --no-cache --virtual .build-deps \
-        build-base \
-        coreutils \
-        curl \
-        gd-dev \
-        geoip-dev \
-        libxslt-dev \
-        linux-headers \
-        make \
-        perl-dev \
-        readline-dev \
-        zlib-dev \
-        ${RESTY_ADD_PACKAGE_BUILDDEPS} \
-    && apk add --no-cache \
-        gd \
-        geoip \
-        libgcc \
-        libxslt \
-        zlib \
-        ${RESTY_ADD_PACKAGE_RUNDEPS} \
-    && cd /tmp \
-    && if [ -n "${RESTY_EVAL_PRE_CONFIGURE}" ]; then eval $(echo ${RESTY_EVAL_PRE_CONFIGURE}); fi \
-    && cd /tmp \
-    && curl -fSL "${RESTY_OPENSSL_URL_BASE}/openssl-${RESTY_OPENSSL_VERSION}.tar.gz" -o openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
-    && tar xzf openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
-    && cd openssl-${RESTY_OPENSSL_VERSION} \
+RUN cd ${SOURCES_DIR} \
+    && curl -fSL "${RESTY_OPENSSL_URL_BASE}/openssl-${RESTY_OPENSSL_VERSION}.tar.gz" -o ${SOURCES_DIR}/openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
+    && tar xzf ${SOURCES_DIR}/openssl-${RESTY_OPENSSL_VERSION}.tar.gz \
+    && cd ${SOURCES_DIR}/openssl-${RESTY_OPENSSL_VERSION} \
     && if [ $(echo ${RESTY_OPENSSL_VERSION} | cut -c 1-5) = "1.1.1" ] ; then \
-        echo 'patching OpenSSL 1.1.1 for OpenResty' \
-        && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${RESTY_OPENSSL_PATCH_VERSION}-sess_set_get_cb_yield.patch | patch -p1 ; \
+    echo 'patching OpenSSL 1.1.1 for OpenResty' \
+    && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${RESTY_OPENSSL_PATCH_VERSION}-sess_set_get_cb_yield.patch | patch -p1 ; \
     fi \
     && if [ $(echo ${RESTY_OPENSSL_VERSION} | cut -c 1-5) = "1.1.0" ] ; then \
-        echo 'patching OpenSSL 1.1.0 for OpenResty' \
-        && curl -s https://raw.githubusercontent.com/openresty/openresty/ed328977028c3ec3033bc25873ee360056e247cd/patches/openssl-1.1.0j-parallel_build_fix.patch | patch -p1 \
-        && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${RESTY_OPENSSL_PATCH_VERSION}-sess_set_get_cb_yield.patch | patch -p1 ; \
+    echo 'patching OpenSSL 1.1.0 for OpenResty' \
+    && curl -s https://raw.githubusercontent.com/openresty/openresty/ed328977028c3ec3033bc25873ee360056e247cd/patches/openssl-1.1.0j-parallel_build_fix.patch | patch -p1 \
+    && curl -s https://raw.githubusercontent.com/openresty/openresty/master/patches/openssl-${RESTY_OPENSSL_PATCH_VERSION}-sess_set_get_cb_yield.patch | patch -p1 ; \
     fi \
     && ./config \
-      no-threads shared zlib -g \
-      enable-ssl3 enable-ssl3-method \
-      --prefix=/usr/local/openresty/openssl \
-      --libdir=lib \
-      -Wl,-rpath,/usr/local/openresty/openssl/lib \
+    no-threads shared zlib -g \
+    enable-ssl3 enable-ssl3-method \
+    --prefix=/usr/local/openresty/openssl \
+    --libdir=lib \
+    -Wl,-rpath,/usr/local/openresty/openssl/lib \
     && make -j${RESTY_J} \
-    && make -j${RESTY_J} install_sw \
-    && cd /tmp \
-    && curl -fSL https://downloads.sourceforge.net/project/pcre/pcre/${RESTY_PCRE_VERSION}/pcre-${RESTY_PCRE_VERSION}.tar.gz -o pcre-${RESTY_PCRE_VERSION}.tar.gz \
-    && echo "${RESTY_PCRE_SHA256}  pcre-${RESTY_PCRE_VERSION}.tar.gz" | shasum -a 256 --check \
-    && tar xzf pcre-${RESTY_PCRE_VERSION}.tar.gz \
-    && cd /tmp/pcre-${RESTY_PCRE_VERSION} \
-    && ./configure \
-        --prefix=/usr/local/openresty/pcre \
-        --disable-cpp \
-        --enable-jit \
-        --enable-utf \
-        --enable-unicode-properties \
-    && make -j${RESTY_J} \
-    && make -j${RESTY_J} install \
-    && cd /tmp \
-    && curl -fSL https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o openresty-${RESTY_VERSION}.tar.gz \
-    && tar xzf openresty-${RESTY_VERSION}.tar.gz \
-    && cd /tmp/openresty-${RESTY_VERSION} \
+    && make -j${RESTY_J} install_sw
+
+    RUN cd ${SOURCES_DIR} \
+    && curl -fSL https://openresty.org/download/openresty-${RESTY_VERSION}.tar.gz -o ${SOURCES_DIR}/openresty-${RESTY_VERSION}.tar.gz \
+    && tar xzf ${SOURCES_DIR}/openresty-${RESTY_VERSION}.tar.gz \
+    && cd ${SOURCES_DIR}/openresty-${RESTY_VERSION} \
     && eval ./configure -j${RESTY_J} ${_RESTY_CONFIG_DEPS} ${RESTY_CONFIG_OPTIONS} ${RESTY_CONFIG_OPTIONS_MORE} ${RESTY_LUAJIT_OPTIONS} \
     && make -j${RESTY_J} \
     && make -j${RESTY_J} install \
-    && cd /tmp \
+    && cd ${SOURCES_DIR} \
     && if [ -n "${RESTY_EVAL_POST_MAKE}" ]; then eval $(echo ${RESTY_EVAL_POST_MAKE}); fi \
-    && rm -rf \
-        #openssl-${RESTY_OPENSSL_VERSION}.tar.gz openssl-${RESTY_OPENSSL_VERSION} \
-        pcre-${RESTY_PCRE_VERSION}.tar.gz pcre-${RESTY_PCRE_VERSION} \
-        openresty-${RESTY_VERSION}.tar.gz openresty-${RESTY_VERSION} \
-    && apk del .build-deps \
+#    && apk del .build-deps \
     && mkdir -p /var/run/openresty \
-    && ln -sf /dev/stdout /usr/local/openresty/nginx/logs/access.log \
-    && ln -sf /dev/stderr /usr/local/openresty/nginx/logs/error.log
+    && mkdir -p ${OPENRESTY_SOCKET_DIR} \
+    && ln -sf /dev/stdout ${LOGS_DIR}/access.log \
+    && ln -sf /dev/stderr ${LOGS_DIR}/error.log
+# Reset permissions for php unix sockets.
+RUN chown www-data:root ${OPENRESTY_SOCKET_DIR}
+RUN chmod +x ${OPENRESTY_SOCKET_DIR}
+RUN chmod 777 -R ${OPENRESTY_SOCKET_DIR}
+RUN rm -rf ${SOURCES_DIR}
 
 # Add additional binaries into PATH for convenience
 ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/usr/local/openresty/bin
 
+RUN /usr/local/openresty/bin/openresty -V
+
 #CMD ["/usr/local/openresty/bin/openresty", "-g", "daemon off;"]
-
-# Use SIGQUIT instead of default SIGTERM to cleanly drain requests
-# See https://github.com/openresty/docker-openresty/blob/master/README.md#tips--pitfalls
-# Copy nginx configuration files
-COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
-COPY nginx.vh.default.conf /etc/nginx/conf.d/default.conf
-COPY api.lua /usr/local/openresty/nginx/lua/api.lua
-COPY exec.lua /usr/local/openresty/nginx/lua/exec.lua
-
-CMD ["/usr/local/openresty/bin/openresty", "-g", "daemon off;"]
+CMD ["/usr/local/openresty/bin/openresty", "-g", "daemon off;", "php-fpm --nodaemonize"]
 
 EXPOSE 80
 
 # Use SIGQUIT instead of default SIGTERM to cleanly drain requests
 # See https://github.com/openresty/docker-openresty/blob/master/README.md#tips--pitfalls
-STOPSIGNAL SIGQUIT
 
+STOPSIGNAL SIGQUIT
