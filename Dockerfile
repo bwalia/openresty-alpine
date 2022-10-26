@@ -80,9 +80,6 @@ RUN apk update && \
     git \
     g++ 
     
-
-RUN php -v
-
 ARG SOURCES_DIR="/src"
 
 RUN mkdir -p ${SOURCES_DIR} && cd ${SOURCES_DIR}
