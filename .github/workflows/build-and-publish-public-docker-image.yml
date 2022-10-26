@@ -22,6 +22,7 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       run: |
         docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+
     - name: Build Openresty Alpine Public Docker Image
       env:
         DOCKER_USER: ${{ secrets.DOCKER_LOGIN}}
@@ -31,7 +32,7 @@ jobs:
     - name: Docker Push
       env:
         DOCKER_USER: ${{ secrets.DOCKER_USER}}
-        run: docker push $DOCKER_USER/openresty-alpine:$(date +%m-%d-%Y)
+      run: docker push $DOCKER_USER/openresty-alpine:$(date +%m-%d-%Y)
 
     - name: Slack Notification for Workstation CRM release 
       uses: rtCamp/action-slack-notify@v2
