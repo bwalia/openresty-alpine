@@ -33,18 +33,18 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD}}
       run: docker build -t $DOCKER_USER/openresty-alpine:${{ env.image_tag }}
 
-    - name: Docker Push
-      env:
-        DOCKER_USER: ${{ secrets.DOCKER_USER}}
-      run: docker push $DOCKER_USER/openresty-alpine:${{ env.image_tag }}
+    # - name: Docker Push
+    #   env:
+    #     DOCKER_USER: ${{ secrets.DOCKER_USER}}
+    #   run: docker push $DOCKER_USER/openresty-alpine:${{ env.image_tag }}
 
-    - name: Slack Notification for Workstation CRM release 
-      uses: rtCamp/action-slack-notify@v2
-      env:
-        SLACK_CHANNEL: general
-        SLACK_COLOR: ${{ job.status }}
-        SLACK_ICON: https://github.com/rtCamp.png?size=48
-        SLACK_MESSAGE: 'Post Content :rocket:'
-        SLACK_TITLE: Post Title
-        SLACK_USERNAME: rtCamp
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+    # - name: Slack Notification for Workstation CRM release 
+    #   uses: rtCamp/action-slack-notify@v2
+    #   env:
+    #     SLACK_CHANNEL: general
+    #     SLACK_COLOR: ${{ job.status }}
+    #     SLACK_ICON: https://github.com/rtCamp.png?size=48
+    #     SLACK_MESSAGE: 'Post Content :rocket:'
+    #     SLACK_TITLE: Post Title
+    #     SLACK_USERNAME: rtCamp
+    #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
