@@ -60,6 +60,7 @@ RUN apk update && \
     apk add --no-cache --virtual \
     build-base \
     coreutils \
+    wget \
     curl \
     bash \
     gd-dev \
