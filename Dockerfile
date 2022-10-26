@@ -8,22 +8,6 @@ FROM ${RESTY_IMAGE_BASE}:${RESTY_IMAGE_TAG}
 
 LABEL maintainer="Balinder Walia <bwalia@workstation.co.uk>"
 
-ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
-
-RUN chmod +x /usr/local/bin/install-php-extensions && sync && install-php-extensions \
-    gd \
-    xdebug \
-    @composer \
-    intl \
-    mcrypt \
-    memcache \
-    mysqli \
-    xlswriter \
-    uuid \
-    zip \
-    yaml \
-    mailparse
-
 ARG RESTY_IMAGE_BASE="alpine"
 ARG RESTY_IMAGE_TAG="3.16"
 # Docker Build Arguments
