@@ -185,8 +185,7 @@ ENV PATH=$PATH:/usr/local/openresty/luajit/bin:/usr/local/openresty/nginx/sbin:/
 
 RUN /usr/local/openresty/bin/openresty -V
 
-#CMD ["/usr/local/openresty/bin/openresty", "-g", "daemon off;"]
-CMD ["/usr/local/openresty/bin/openresty", "-g", "daemon off;", "php-fpm --nodaemonize"]
+CMD ["/usr/local/openresty/bin/openresty", "-g", "daemon off;"]
 
 EXPOSE 80
 
