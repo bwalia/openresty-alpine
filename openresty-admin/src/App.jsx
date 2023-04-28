@@ -1,35 +1,15 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Admin, Resource, ListGuesser } from "react-admin";
+import dataProvider from "./dataProvider";
+import Dashboard from "./Dashboard/Dashboard";
+import Sessions from "./Sessions";
+import Users from "./Users";
+const API_URL = "http://localhost:8081/api"
 
-function App() {
-  const [count, setCount] = useState(1)
+const App = () => (
+  <Admin dataProvider={dataProvider(API_URL)} dashboard={Dashboard}>
+    <Resource name="users" {...Users} />
+    <Resource name="sessions" {...Sessions} />
+  </Admin>
+);
 
-  return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React asd</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
-
-export default App
+export default App;
