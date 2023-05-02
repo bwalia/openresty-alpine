@@ -33,7 +33,7 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD}}
       run: |
         docker build -t openresty-alpine .
-        docker tag openresty-php:latest $DOCKER_USER/openresty-alpine:latest
+        docker tag openresty-alpine:latest $DOCKER_USER/openresty-alpine:latest
 
     - name: Docker Push Openresty Alpine Public Docker Image
       env:
