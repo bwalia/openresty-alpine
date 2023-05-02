@@ -1,5 +1,5 @@
 {
-	"uuid": "adsjh34876sdfhjg",
+	"id": "adsjh34876sdfhjg",
 	"name": "nginx.conf",
 	"context": "root",
 	"type": "nginx",
