@@ -100,15 +100,13 @@ const getHeaders = () => {
       }
     },
     update: async (resource, params) => {
-      const pageResource = resource.split("/")[1];
       const { data } = params;
       const { id } = params;
-      const url = `${apiUrl}/${pageResource}/${id}?_format=json`;
+      const url = `${apiUrl}/${resource}/${id}`;
       data.businessUUID = localStorage.getItem("uuid_business_id");
       try {
         const response = await fetch(url, {
           method: "PUT",
-          headers: getHeaders(),
           body: JSON.stringify(data),
         });
         if (response.status < 200 || response.status >= 300) {

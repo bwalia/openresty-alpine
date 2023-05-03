@@ -1,12 +1,17 @@
 local cjson = require "cjson"
 
 local function generate_uuid()
-    local random = math.random(1000000000)                                                                                                                                      -- generate a random number
-    local timestamp = os.time()                                                                                                                                                 -- get the current time in seconds since the Unix epoch
-    local hash = ngx.md5(tostring(random) .. tostring(timestamp))                                                                                                               -- create a hash of the random number and timestamp
+    local random = math.random(1000000000)                                            -- generate a random number
+    local timestamp = os.time()                                                       -- get the current time in seconds since the Unix epoch
+    local hash = ngx.md5(tostring(random) .. tostring(timestamp))                     -- create a hash of the random number and timestamp
     local uuid = string.format("%s-%s-%s-%s-%s", string.sub(hash, 1, 8), string.sub(hash, 9, 12),
-        string.sub(hash, 13, 16), string.sub(hash, 17, 20), string.sub(hash, 21, 32))                                                                                           -- format the hash as a UUID
+        string.sub(hash, 13, 16), string.sub(hash, 17, 20), string.sub(hash, 21, 32)) -- format the hash as a UUID
     return uuid
+end
+
+local function is_uuid(str)
+    local uuid_pattern = "^([0-9a-fA-F]-){4}[0-9a-fA-F]-([0-9a-fA-F]-){3}[0-9a-fA-F]$"
+    return string.match(str, uuid_pattern) ~= nil
 end
 
 local function listServers()
@@ -38,26 +43,52 @@ end
 
 local function createServer(body)
     local serverId = generate_uuid()
-    body.id = serverId
     local file, err = io.open("/usr/local/openresty/nginx/html/data/servers/" .. serverId .. ".json", "w")
-
+    local keyset = {}
+    local n = 0
+    for k, v in pairs(body) do
+        n = n + 1
+        table.insert(keyset, cjson.decode(k))
+    end
+    local payloads = keyset[1]
+    payloads.id = serverId
     if file then
         -- Write the JSON data to the file
-        file:write(cjson.encode(body))
+        file:write(cjson.encode(payloads))
         -- Close the file
         file:close()
         return ngx.say(cjson.encode({ data = { id = serverId } }))
     else
-        -- Return an error message  cb9c1a5b-6910-4fb2-b457-a9c72a392d90 0be611c11371424ea8b725107b4b0e11
         ngx.say("Error opening file", err)
+    end
+end
+
+local function listServer(args, id)
+    local file, err = io.open("/usr/local/openresty/nginx/html/data/servers/" .. id .. ".json", "rb")
+    if file == nil then
+        ngx.say("Couldn't read file: " .. err)
+    else
+        local jsonString = file:read "*a"
+        file:close()
+        local jsonData = cjson.decode(jsonString)
+        ngx.say(cjson.encode({data = jsonData}))
     end
 end
 
 local function handle_get_request(args, path)
     -- handle GET request logic here
-    -- ngx.say(path)
+    local delimiter = "/"
+    local subPath = {}
+    for substring in string.gmatch(path, "[^" .. delimiter .. "]+") do
+        table.insert(subPath, substring)
+    end
+    local pattern = ".*/(.*)"
+    local uuid = string.match(path, pattern)
+
     if path == "servers" then
         listServers()
+    elseif (#uuid == 36 or #uuid == 32) and subPath[1] == "servers" then
+        listServer(args, uuid)
     end
 end
 
@@ -71,6 +102,7 @@ end
 -- Function to handle PUT requests
 local function handle_put_request(args, path)
     -- handle PUT request logic here
+    ngx.say(cjson.encode(args), path)
     local response_data = { message = "Hello, PUT request!" }
     ngx.say(cjson.encode(response_data))
 end
