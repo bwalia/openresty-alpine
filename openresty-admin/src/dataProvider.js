@@ -79,7 +79,7 @@ const getHeaders = () => {
       return data;
     },
     create: async (resource, params) => {
-      const url = `${apiUrl}/post-${resource}`;
+      const url = `${apiUrl}/${resource}`;
       const { data } = params;
       data.businessUUID = localStorage.getItem("uuid_business_id");
       try {

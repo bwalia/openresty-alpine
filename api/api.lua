@@ -1,145 +1,102 @@
-function strSplit(delim, str)
-    local t = {}
+local cjson = require "cjson"
 
-    for substr in string.gmatch(str, "[^" .. delim .. "]*") do
-        if substr ~= nil and string.len(substr) > 0 then
-            table.insert(t, substr)
-        end
-    end
-
-    return t
+local function generate_uuid()
+    local random = math.random(1000000000)                                                                                                                                      -- generate a random number
+    local timestamp = os.time()                                                                                                                                                 -- get the current time in seconds since the Unix epoch
+    local hash = ngx.md5(tostring(random) .. tostring(timestamp))                                                                                                               -- create a hash of the random number and timestamp
+    local uuid = string.format("%s-%s-%s-%s-%s", string.sub(hash, 1, 8), string.sub(hash, 9, 12),
+        string.sub(hash, 13, 16), string.sub(hash, 17, 20), string.sub(hash, 21, 32))                                                                                           -- format the hash as a UUID
+    return uuid
 end
 
-function generate_uuid()
-    local template ='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
-    return string.gsub(template, '[xy]', function (c)
-        local v = (c == 'x') and math.random(0, 0xf) or math.random(8, 0xb)
-        return string.format('%x', v)
-    end)
-  end
-
--- Read body being passed
--- Required for ngx.req.get_body_data()
-ngx.req.read_body();
--- Parser for sending JSON back to the client
-local cjson = require("cjson")
--- Strip the api/ bit from the request path
-local reqPath = ngx.var.uri:gsub("api/", "");
--- Get the request method (POST, GET etc..)
-local reqMethod = ngx.var.request_method
--- Parse the body data as JSON
-local body = ngx.req.get_body_data() ==
-    -- This is like a ternary statement for Lua
-    -- It is saying if doesn't exist at least
-    -- define as empty object
-    nil and {} or cjson.decode(ngx.req.get_body_data());
-
-Api = {}
-Api.__index = Api
--- Declare API not yet responded
-Api.responded = false;
--- Function for checking input from client
-function Api.endpoint(method, path, callback)
-    do return callback(body) end
-    -- If API not already responded
-    if Api.responded == false then
-        -- KeyData = params passed in path
-        local keyData = {}
-        -- If this endpoint has params
-        if string.find(path, "<(.-)>")
-        then
-            -- Split origin and passed path sections
-            local splitPath = strSplit("/", path)
-            local splitReqPath = strSplit("/", reqPath)
-            -- Iterate over splitPath
-            for i, k in pairs(splitPath) do
-                -- If chunk contains <something>
-                if string.find(k, "<(.-)>")
-                then
-                    -- Add to keyData
-                    keyData[string.match(k, "%<(%a+)%>")] = splitReqPath[i]
-                    -- Replace matches with default for validation
-                    reqPath = string.gsub(reqPath, splitReqPath[i], k)
-                end
-            end
-        end
-
-        -- return false if path doesn't match anything
-        if reqPath ~= path
-        then
-            return false;
-        end
-        -- return error if method not allowed
-        if reqMethod ~= method
-        then
-            return ngx.say(
-                cjson.encode({
-                    error = 500,
-                    message = "Method " .. reqMethod .. " not allowed"
-                })
-            )
-        end
-        ngx.header['Access-Control-Allow-Origin'] = '*'
-        ngx.header['Content-Type'] = 'application/json'
-
-        -- Make sure we don't run this again
-        Api.responded = true;
-
-        -- return body if all OK
-        body.keyData = keyData
-        return callback(body);
+local function listServers()
+    local files = {}
+    -- Run the 'ls' command to get a list of filenames
+    local output = io.popen("ls /usr/local/openresty/nginx/html/data/servers"):read("*all")
+    for filename in string.gmatch(output, "[^\r\n]+") do
+        table.insert(files, filename)
     end
-
-    return false;
-end
-
-Api.endpoint('POST', '/post-servers',
-    function(body)
-        local serverId = generate_uuid
-        body.id = "0be611c11371424ea8b725107b4b0e11"
-        local file = io.open("/usr/local/openresty/nginx/html/data/servers/0be611c11371424ea8b725107b4b0e11.json", "w")
-
-        if file then
-            -- Write the JSON data to the file
-            file:write(cjson.encode(body))
-
-            -- Close the file
-            file:close()
-
-            -- Return a success message
-            ngx.say("File written successfully")
+    -- Print the list of filenames
+    for _, filename in ipairs(files) do
+        print(filename)
+    end
+    local jsonData = {}
+    for _, filename in ipairs(files) do
+        local file, err = io.open("/usr/local/openresty/nginx/html/data/servers/" .. filename, "rb")
+        if file == nil then
+            ngx.say("Couldn't read file: " .. err)
         else
-            -- Return an error message
-            ngx.say("Error opening file")
+            local jsonString = file:read "*a"
+            file:close()
+            local servers = cjson.decode(jsonString)
+
+            jsonData[_] = servers
         end
     end
-)
+    return ngx.say(cjson.encode({ data = jsonData, total = 3 }))
+end
 
-Api.endpoint('GET', '/servers',
-    function(body)
-        local files = {}
-        -- Run the 'ls' command to get a list of filenames
-        local output = io.popen("ls /usr/local/openresty/nginx/html/data/servers"):read("*all")
-        for filename in string.gmatch(output, "[^\r\n]+") do
-            table.insert(files, filename)
-        end
-        -- Print the list of filenames
-        for _, filename in ipairs(files) do
-            print(filename)
-        end
-        local jsonData = {}
-        for _, filename in ipairs(files) do
-            local file, err = io.open("/usr/local/openresty/nginx/html/data/servers/" .. filename, "rb")
-            if file == nil then
-                ngx.say("Couldn't read file: " .. err)
-            else
-                local jsonString = file:read "*a"
-                file:close()
-                local servers = cjson.decode(jsonString)
+local function createServer(body)
+    local serverId = generate_uuid()
+    body.id = serverId
+    local file, err = io.open("/usr/local/openresty/nginx/html/data/servers/" .. serverId .. ".json", "w")
 
-                jsonData[_] = servers
-            end
-        end
-        return ngx.say(cjson.encode({ data = jsonData, total = 3 }))
+    if file then
+        -- Write the JSON data to the file
+        file:write(cjson.encode(body))
+        -- Close the file
+        file:close()
+        return ngx.say(cjson.encode({ data = { id = serverId } }))
+    else
+        -- Return an error message  cb9c1a5b-6910-4fb2-b457-a9c72a392d90 0be611c11371424ea8b725107b4b0e11
+        ngx.say("Error opening file", err)
     end
-)
+end
+
+local function handle_get_request(args, path)
+    -- handle GET request logic here
+    -- ngx.say(path)
+    if path == "servers" then
+        listServers()
+    end
+end
+
+local function handle_post_request(args, path)
+    -- handle POST request logic here
+    if path == "servers" then
+        createServer(args)
+    end
+end
+
+-- Function to handle PUT requests
+local function handle_put_request(args, path)
+    -- handle PUT request logic here
+    local response_data = { message = "Hello, PUT request!" }
+    ngx.say(cjson.encode(response_data))
+end
+
+-- Function to handle DELETE requests
+local function handle_delete_request(args, path)
+    -- handle DELETE request logic here
+    local response_data = { message = "Hello, DELETE request!" }
+    ngx.say(cjson.encode(response_data))
+end
+
+-- Get the path name from the URI
+local path_name = ngx.var.uri:match("^/api/(.*)$")
+
+-- Determine the request method and call the appropriate function
+if ngx.req.get_method() == "GET" then
+    handle_get_request(ngx.req.get_uri_args(), path_name)
+elseif ngx.req.get_method() == "POST" then
+    ngx.req.read_body()
+    handle_post_request(ngx.req.get_post_args(), path_name)
+elseif ngx.req.get_method() == "PUT" then
+    ngx.req.read_body()
+    handle_put_request(ngx.req.get_post_args(), path_name)
+elseif ngx.req.get_method() == "DELETE" then
+    ngx.req.read_body()
+    handle_delete_request(ngx.req.get_post_args(), path_name)
+else
+    ngx.exit(ngx.HTTP_NOT_ALLOWED)
+end
