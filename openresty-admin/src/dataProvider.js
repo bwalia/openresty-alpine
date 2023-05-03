@@ -3,8 +3,8 @@ const getHeaders = () => {
     const accessToken = JSON.parse(token);
   
     const basicHeaders = {
-      Accept: "application/json",
-      "Content-Type": "application/json",
+      // Accept: "application/json",
+      // "Content-Type": "application/json",
     };
   
     if (accessToken?.access_token) {
@@ -79,7 +79,7 @@ const getHeaders = () => {
       return data;
     },
     create: async (resource, params) => {
-      const url = `${apiUrl}/${resource}?_format=json`;
+      const url = `${apiUrl}/post-${resource}`;
       const { data } = params;
       data.businessUUID = localStorage.getItem("uuid_business_id");
       try {

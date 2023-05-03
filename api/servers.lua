@@ -29,6 +29,9 @@ function _Servers.getServers()
             end
         end
         return json.encode({ data = jsonData, total = 3 })
+    else
+        local args, err = ngx.req.request_body()
+        return ngx.say(args)
     end
 end
 
