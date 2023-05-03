@@ -1,11 +1,10 @@
 ARG BASE_TAG=latest
 
-#FROM registry.workstation.co.uk/openresty-php:$TAG
 FROM bwalia/openresty-alpine:$BASE_TAG
 
 WORKDIR /usr/local/openresty/nginx/html
 
-RUN apk update && apk upgrade
+# RUN apk update && apk upgrade
 RUN apk add --no-cache npm yarn 
 
 RUN node -v
