@@ -77,7 +77,7 @@ function nested_fun(json_obj,nval,space)
             end
 
         else
-            if nval == 'http' then txt = txt .. "  " end            
+            if nval == 'http' then txt = txt .. "  " end
             if nval == 'upstream big_server_com' then txt = txt .. "  " end             
 
             if k ~= 'include' and k ~= 'server' and k ~= 'log_format' and space == true then 
@@ -139,17 +139,6 @@ function file_exists(name)
 function script_path()
     local str = debug.getinfo(2, "S").source:sub(2)
     return str:match("(.*/)")
- end
-
- function _Response.pingPong()
-    local data = {
-        response = "pong",
-        app = "whitefalcon",
-        lua_version = "",
-        linux_version = ""
-    }
-    -- Encode the table as a JSON string
-    json_str = cjson.encode(data)
  end
 
 return _Response
